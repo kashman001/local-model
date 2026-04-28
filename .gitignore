@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.so
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / frontend (in case the chat UI is JS/TS)
+node_modules/
+.next/
+.turbo/
+.vite/
+*.log
+
+# Models & artifacts (never commit weights)
+models/
+*.safetensors
+*.gguf
+*.bin
+.hf_cache/
+huggingface/
+
+# Claude Code local settings
+.claude/settings.local.json
