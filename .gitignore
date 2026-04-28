@@ -45,5 +45,14 @@ models/
 .hf_cache/
 huggingface/
 
+# Local data (SQLite history db, etc.)
+data/
+
+# Benchmark output
+bench/results/
+
 # Claude Code local settings
 .claude/settings.local.json
+
+# Transient session-handoff doc (local only — read on session start, delete after acting)
+RESUME.md

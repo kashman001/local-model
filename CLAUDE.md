@@ -2,14 +2,16 @@
 
 Context for Claude Code sessions working on **local-model**. Read this fully before starting any task.
 
+**Session start:** if `RESUME.md` exists at the project root, read it *first* — it's a transient handoff from the previous session and may point you at the immediate next action. Once you've acted on it (or confirmed it's stale because project memory is already current), **delete `RESUME.md`** in the same step. The file is gitignored, so deletion needs no commit.
+
 ## Project
 
 Local LLM deployment on Apple Silicon using MLX, with a sample chat application. The project targets a single user (the repo owner) running everything on a MacBook Pro.
 
-Architecture (planned, see `ARCHITECTURE.md` once written):
+Architecture (drafted in [`SPEC.md`](./SPEC.md) and [`ARCHITECTURE.md`](./ARCHITECTURE.md), 2026-04-28):
 
-- **Inference server** — MLX-backed, OpenAI-compatible HTTP API (default plan: `mlx-lm.server` or a thin wrapper).
-- **Chat client** — talks to the server. UI shape TBD until `SPEC.md` is finalized.
+- **Inference server** — custom FastAPI process exposing an OpenAI-compatible HTTP API. Phase 1 ships only `MLXBackend` (uses `mlx_lm` directly, not `mlx_lm.server`). Phase 2 adds `VLLMBackend` for the RTX 4080 PC. Decision recorded in [`docs/decisions/0003-server-architecture.md`](./docs/decisions/0003-server-architecture.md).
+- **Chat client** — small FastAPI + Jinja2 + **HTMX** browser app on `:8000`; talks to one or more inference endpoints over HTTP. No JS framework.
 
 ## Workflow
 
@@ -83,6 +85,6 @@ Pre-approvals so agents can work autonomously. **Anything not on the green list 
 
 ## Quick reference
 
-- **Local URLs**: TBD (default `mlx-lm.server` is `http://127.0.0.1:8080`).
+- **Local URLs**: inference server `http://127.0.0.1:8080`; browser chat client `http://127.0.0.1:8000` (per [`ARCHITECTURE.md` §15](./ARCHITECTURE.md#15-deployment-topology)).
 - **GitHub repo**: `kashman001/local-model` *(planned, public — not yet created; see `memory/project_overview.md` for the exact `git init` + `gh repo create` commands waiting to run)*.
 - **Active branch**: `main` (once repo is initialized).
