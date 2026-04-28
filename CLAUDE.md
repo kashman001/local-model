@@ -52,6 +52,35 @@ Don't grind routine work on Opus, and don't attempt architectural reasoning on H
 3. Use Claude Code subagents (`Explore`, `Plan`, `general-purpose`) for parallelizable work.
 4. Each agent task should reference the SPEC section it implements.
 
+## Standing authorizations
+
+Pre-approvals so agents can work autonomously. **Anything not on the green list still requires confirmation.** Authorization stands only for the scope written here — extending it requires a CLAUDE.md update, not in-session approval.
+
+**Pre-authorized (proceed without asking):**
+
+- File reads / edits / creates anywhere under the project root, including subagent dispatch.
+- Local git ops on **any branch other than `main`**: stage, commit (Conventional Commits), branch create, switch, rebase onto `main`, stash, push to `origin/<feature-branch>`.
+- Dependency ops via `uv`: `uv sync`, `uv add`, `uv remove`, `uv lock`. Lockfile changes go in the same commit as the code that needed them.
+- Format / lint / test: `ruff format`, `ruff check` (incl. `--fix`), `pytest` with any args.
+- Read-only `gh` queries: `gh pr view/list/diff/checks`, `gh issue view/list`, `gh run view/list`, `gh api` GET requests.
+- Opening PRs (`gh pr create`) and commenting on PRs / issues.
+- Updating `SPEC.md`, `ARCHITECTURE.md`, `docs/decisions/*`, `README.md`, and `CLAUDE.md` when code changes warrant it — same commit as the code (per the Hard rule above).
+- Starting and stopping local processes bound to `127.0.0.1` (e.g. the inference server) for testing.
+
+**Always confirm first:**
+
+- Push or merge to `main`. Force-push anywhere.
+- `git reset --hard`, `git clean -fd`, `git branch -D`, deleting tags, rewriting published history.
+- `gh pr merge`, `gh repo edit`, `gh repo delete`, visibility flips, branch protection changes.
+- Closing PRs or issues via `gh`.
+- Downloading model weights (typically >1 GB — disk + bandwidth impact). Show the exact command and approximate size before running.
+- Editing `.claude/settings.json` to expand `permissions.allow` — agents must not widen their own permissions.
+- Any command run with `sudo`.
+- Writes outside the project root (HOME dotfiles, system config, sibling repos).
+- Long-running foreground processes (>2 min) with no clear stop condition.
+
+**When ambiguity blocks a task,** use `AskUserQuestion` with batched options (up to 5) rather than turn-by-turn confirmations.
+
 ## Quick reference
 
 - **Local URLs**: TBD (default `mlx-lm.server` is `http://127.0.0.1:8080`).

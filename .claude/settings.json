@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull)",
+      "Bash(git pull *)",
+      "Bash(git fetch)",
+      "Bash(git fetch *)",
+      "Bash(git switch *)",
+
+      "Bash(uv sync)",
+      "Bash(uv sync *)",
+      "Bash(uv add *)",
+      "Bash(uv remove *)",
+      "Bash(uv lock)",
+      "Bash(uv lock *)",
+      "Bash(uv tree)",
+      "Bash(uv tree *)",
+      "Bash(uv venv)",
+      "Bash(uv venv *)",
+      "Bash(uv pip list)",
+      "Bash(uv pip show *)",
+      "Bash(uv pip freeze)",
+
+      "Bash(ruff check)",
+      "Bash(ruff check *)",
+      "Bash(ruff format)",
+      "Bash(ruff format *)",
+
+      "Bash(pytest)",
+      "Bash(pytest *)"
+    ]
+  }
+}
