@@ -100,7 +100,7 @@ classDiagram
     }
     class Token {
         +text: str
-        +id: int
+        +token_id: int
         +logprob: float
         +elapsed_ms: float
     }

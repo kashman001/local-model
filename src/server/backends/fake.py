@@ -30,6 +30,7 @@ class FakeBackend:
         self._loaded.pop(model_id, None)
 
     def generate(self, messages: list[dict], params: dict) -> Iterator[Token]:
+        """Yield one Token per char. Arguments required by Protocol but ignored."""
         start = time.perf_counter()
         for i, ch in enumerate(self.canned_text):
             yield Token(
