@@ -104,5 +104,6 @@ Rules:
 ## Quick reference
 
 - **Local URLs**: inference server `http://127.0.0.1:8080`; browser chat client `http://127.0.0.1:8000` (per [`ARCHITECTURE.md` §15](./ARCHITECTURE.md#15-deployment-topology)).
+- **Worktree directory**: `.worktrees/` (project-local, gitignored). Each long-running implementation effort gets its own subdirectory, e.g. `.worktrees/v1-mac-mlx/`. Skills like `superpowers:using-git-worktrees` should pick this up via `grep -i "worktree.*director" CLAUDE.md` and not re-ask.
 - **GitHub repo**: `kashman001/local-model` *(planned, public — not yet created; see `memory/project_overview.md` for the exact `git init` + `gh repo create` commands waiting to run)*.
 - **Active branch**: `main` (once repo is initialized).

@@ -56,3 +56,6 @@ bench/results/
 
 # Transient session-handoff doc (local only — read on session start, delete after acting)
 RESUME.md
+
+# Git worktrees (configured in CLAUDE.md "Quick reference")
+.worktrees/
