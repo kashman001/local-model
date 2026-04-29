@@ -62,6 +62,12 @@ Pre-approvals so agents can work autonomously. **Anything not on the green list 
 
 - File reads / edits / creates anywhere under the project root, including subagent dispatch.
 - Local git ops on **any branch other than `main`**: stage, commit (Conventional Commits), branch create, switch, rebase onto `main`, stash, push to `origin/<feature-branch>`.
+- **Push to `main`** when **all** of the following hold — verify each before pushing:
+  1. **Working tree is clean.** `git status --porcelain` returns empty (no unstaged, staged-but-uncommitted, or untracked files that risk being included by an interactive flow).
+  2. **Push is fast-forward.** Run `git fetch origin main` first, then `git rev-list --left-right --count origin/main...HEAD` must show `0\t<N>` — i.e., `origin/main` has zero commits we don't already have, and we have N≥1 to push.
+  3. **No force flags.** Plain `git push origin main` only.
+
+  If any precondition fails, this falls back to the red list and requires confirmation.
 - Dependency ops via `uv`: `uv sync`, `uv add`, `uv remove`, `uv lock`. Lockfile changes go in the same commit as the code that needed them.
 - Format / lint / test: `ruff format`, `ruff check` (incl. `--fix`), `pytest` with any args.
 - Read-only `gh` queries: `gh pr view/list/diff/checks`, `gh issue view/list`, `gh run view/list`, `gh api` GET requests.
@@ -71,9 +77,9 @@ Pre-approvals so agents can work autonomously. **Anything not on the green list 
 
 **Always confirm first:**
 
-- Push or merge to `main`. Force-push anywhere.
+- Pushing to `main` outside the fast-forward+clean-tree green-list condition above. Force-push anywhere. Merging into `main` (`git merge`, `gh pr merge`).
 - `git reset --hard`, `git clean -fd`, `git branch -D`, deleting tags, rewriting published history.
-- `gh pr merge`, `gh repo edit`, `gh repo delete`, visibility flips, branch protection changes.
+- `gh repo edit`, `gh repo delete`, visibility flips, branch protection changes.
 - Closing PRs or issues via `gh`.
 - Downloading model weights (typically >1 GB — disk + bandwidth impact). Show the exact command and approximate size before running.
 - Editing `.claude/settings.json` to expand `permissions.allow` — agents must not widen their own permissions.
@@ -81,7 +87,19 @@ Pre-approvals so agents can work autonomously. **Anything not on the green list 
 - Writes outside the project root (HOME dotfiles, system config, sibling repos).
 - Long-running foreground processes (>2 min) with no clear stop condition.
 
-**When ambiguity blocks a task,** use `AskUserQuestion` with batched options (up to 5) rather than turn-by-turn confirmations.
+**Confirm-first protocol — `waiting-on-you:` markers.** Whenever you need confirmation for a red-list item, end the message with a single line in the form:
+
+> `**waiting-on-you:** <one-line description naming the exact action or command>`
+
+Rules:
+
+- The phrase is lowercase `waiting-on-you:` so a long session can be searched (`grep` / `Cmd+F`) for blocked points.
+- **One line only.** Any context goes earlier in the message; the marker is the visual anchor.
+- Name the action concretely: `git push origin main` not "push the changes"; `gh pr merge 42 --squash` not "merge the PR".
+- Place it last in the message.
+- Once the action is approved and executed, do **not** echo `waiting-on-you:` for the resolved item in subsequent messages — only use it for currently-blocked items.
+
+**When ambiguity blocks a task,** use `AskUserQuestion` with batched options (up to 5) rather than turn-by-turn confirmations. (`AskUserQuestion` is its own UI flow and does not need a `waiting-on-you:` marker — the question itself is the marker.)
 
 ## Quick reference
 
