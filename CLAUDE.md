@@ -39,9 +39,27 @@ Use the **cheapest Claude model that can do the job correctly**. Default to Sonn
 
 Don't grind routine work on Opus, and don't attempt architectural reasoning on Haiku.
 
+### Subagent dispatches
+
+When you spin up subagents (e.g. via `superpowers:subagent-driven-development`), apply the same routing logic to **each subagent's `model:` parameter**:
+
+| Subagent task | Model |
+|---|---|
+| Mechanical implementer (single file, plan-verbatim, dataclass / config / DAO / stub) | **Haiku** |
+| Spec-compliance reviewer (cat files, diff against plan, verify commit) | **Haiku** |
+| Code-quality reviewer for trivial config / scaffolding tasks | **Haiku** |
+| Implementer touching a fast-moving library (MLX, vLLM, AI SDKs) — judgment + adaptation expected | **Sonnet** |
+| Code-quality reviewer for substantive logic / integration tasks | **Sonnet** |
+| Final pre-merge review across an entire branch | **Sonnet** |
+
+When the plan is well-specified and the task is mechanical, **trust the spec compliance + ruff + pytest** as the quality gate; you don't need a separate code-quality reviewer for every micro-task. Reserve standalone code-quality reviewers for substantive work (real I/O, integrations, multi-file coordination).
+
 ## Tooling conventions
 
 - **Python**: `uv` for env + dependency management, `ruff` for format + lint, `pytest` for tests. See [`docs/decisions/0001-python-tooling.md`](./docs/decisions/0001-python-tooling.md).
+- **Type hints**: `X | None` over `Optional[X]` (PEP 604, Python 3.10+). Ruff UP045 auto-fixes this — don't fight it. The `from typing import Optional` import is unneeded.
+- **SQL ordering**: when the plan or code uses `ORDER BY <semantic column>`, append a deterministic tiebreaker (`rowid` for SQLite). `CURRENT_TIMESTAMP` is second-granularity, so two inserts in the same second tie and re-order non-deterministically. Lexicographic UUID order is **not** a tiebreaker.
+- **Verifying library APIs**: when a plan or doc references a fast-moving library (any LLM inference engine, AI SDK, frontend framework), verify current API shape via Context7 (`mcp__plugin_context7_context7__query-docs`) before coding — plan code may be stale against the latest release.
 - **Node/TS** *(if a JS frontend lands)*: `pnpm`, TypeScript strict mode, Vite or Next.
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`).
 - **Branches**: short-lived feature branches off `main`. PRs for non-trivial work.
