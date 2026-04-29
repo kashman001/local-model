@@ -6,7 +6,6 @@ import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass(slots=True)
@@ -14,7 +13,7 @@ class Conversation:
     id: str
     title: str
     model_id: str
-    preset_id: Optional[str]
+    preset_id: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -25,10 +24,10 @@ class Message:
     conversation_id: str
     role: str
     content: str
-    prompt_tokens: Optional[int]
-    completion_tokens: Optional[int]
-    tps: Optional[float]
-    ttft_ms: Optional[float]
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    tps: float | None
+    ttft_ms: float | None
     created_at: datetime
 
 
@@ -61,7 +60,7 @@ def create_conversation(
     conn: sqlite3.Connection,
     title: str,
     model_id: str,
-    preset_id: Optional[str] = None,
+    preset_id: str | None = None,
 ) -> Conversation:
     cid = str(uuid.uuid4())
     conn.execute(
@@ -72,7 +71,7 @@ def create_conversation(
     return get_conversation(conn, cid)  # type: ignore[return-value]
 
 
-def get_conversation(conn: sqlite3.Connection, cid: str) -> Optional[Conversation]:
+def get_conversation(conn: sqlite3.Connection, cid: str) -> Conversation | None:
     row = conn.execute("SELECT * FROM conversation WHERE id = ?", (cid,)).fetchone()
     return _row_to_conversation(row) if row else None
 
@@ -94,10 +93,10 @@ def insert_message(
     conversation_id: str,
     role: str,
     content: str,
-    prompt_tokens: Optional[int] = None,
-    completion_tokens: Optional[int] = None,
-    tps: Optional[float] = None,
-    ttft_ms: Optional[float] = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
+    tps: float | None = None,
+    ttft_ms: float | None = None,
 ) -> Message:
     mid = str(uuid.uuid4())
     conn.execute(
