@@ -32,8 +32,20 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
     app.state.server_url = server_url
 
     @app.get("/", response_class=HTMLResponse)
-    async def index(request: Request):
-        return templates.TemplateResponse(request=request, name="index.html", context={})
+    async def index(request: Request, conversation_id: str | None = None):
+        messages: list[dict] = []
+        if conversation_id:
+            try:
+                r = await app.state.client.get(f"/history/conversations/{conversation_id}/messages")
+                if r.status_code == 200:
+                    messages = r.json()
+            except Exception as e:
+                logger.warning("Failed to load conversation %s: %s", conversation_id, e)
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={"messages": messages, "conversation_id": conversation_id or ""},
+        )
 
     @app.get("/history", response_class=HTMLResponse)
     async def history_page(request: Request):

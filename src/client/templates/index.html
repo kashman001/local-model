@@ -2,8 +2,17 @@
 {% block title %}chat{% endblock %}
 {% block content %}
 <section id="chat">
-  <div id="messages"></div>
+  <div id="messages">
+    {% for m in messages %}
+      {% if m.role == "user" %}
+        <div class="msg user"><strong>You:</strong> {{ m.content }}</div>
+      {% else %}
+        <div class="msg assistant"><strong>Model:</strong> {{ m.content }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
   <form id="composer" hx-post="/chat/send" hx-target="#messages" hx-swap="beforeend">
+    <input type="hidden" name="conversation_id" value="{{ conversation_id }}">
     <textarea name="prompt" placeholder="Ask something…" required></textarea>
     <button type="submit">Send</button>
   </form>
