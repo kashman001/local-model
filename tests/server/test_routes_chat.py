@@ -67,3 +67,18 @@ def test_chat_model_not_loaded_returns_503():
     body = r.json()
     assert body["error"]["code"] == "model_not_loaded"
     assert isinstance(body["error"]["message"], str)
+
+
+def test_chat_streaming_model_not_loaded_returns_503():
+    app = create_app(backend=FakeBackend(), default_model="m")
+    with TestClient(app) as client:
+        state = app.state.app_state
+        state.registry.unload("m")
+        r = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "hi"}], "stream": True},
+        )
+    assert r.status_code == 503
+    body = r.json()
+    assert body["error"]["code"] == "model_not_loaded"
+    assert isinstance(body["error"]["message"], str)
