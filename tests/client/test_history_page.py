@@ -24,7 +24,7 @@ def test_history_page_lists_conversations():
         )
     )
     app = create_app(server_url=upstream)
-    client = TestClient(app)
-    r = client.get("/history")
+    with TestClient(app) as client:
+        r = client.get("/history")
     assert r.status_code == 200
     assert "first chat" in r.text

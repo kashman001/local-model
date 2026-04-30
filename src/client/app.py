@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -21,9 +22,14 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
     base = Path(__file__).parent
     templates = Jinja2Templates(directory=str(base / "templates"))
 
-    app = FastAPI(title="local-model client", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        async with httpx.AsyncClient(base_url=server_url, timeout=120.0) as c:
+            app.state.client = c
+            yield
+
+    app = FastAPI(title="local-model client", version="0.1.0", lifespan=lifespan)
     app.state.server_url = server_url
-    app.state.client = httpx.AsyncClient(base_url=server_url, timeout=120.0)
 
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):

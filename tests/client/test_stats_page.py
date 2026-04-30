@@ -25,8 +25,8 @@ def test_stats_page_renders_swap_form():
         )
     )
     app = create_app(server_url=upstream)
-    client = TestClient(app)
-    r = client.get("/stats")
+    with TestClient(app) as client:
+        r = client.get("/stats")
     assert r.status_code == 200
     assert "m1" in r.text
     assert "/swap" in r.text
@@ -42,7 +42,7 @@ def test_swap_posts_to_admin_load():
         )
     )
     app = create_app(server_url=upstream)
-    client = TestClient(app)
-    r = client.post("/swap", data={"model_id": "m2"})
+    with TestClient(app) as client:
+        r = client.post("/swap", data={"model_id": "m2"})
     assert r.status_code == 200
     assert "m2" in r.text

@@ -7,10 +7,10 @@ from client.app import create_app
 
 def test_index_renders():
     app = create_app(server_url="http://127.0.0.1:8080")
-    client = TestClient(app)
-    r = client.get("/")
-    assert r.status_code == 200
-    assert "local-model" in r.text
+    with TestClient(app) as client:
+        r = client.get("/")
+        assert r.status_code == 200
+        assert "local-model" in r.text
 
 
 @respx.mock
@@ -26,8 +26,8 @@ def test_chat_send_creates_conversation_and_returns_assistant_shell():
     )
 
     app = create_app(server_url=upstream)
-    client = TestClient(app)
-    r = client.post("/chat/send", data={"prompt": "hi", "conversation_id": ""})
+    with TestClient(app) as client:
+        r = client.post("/chat/send", data={"prompt": "hi", "conversation_id": ""})
     assert r.status_code == 200
     # Returned HTML should include both the user bubble and an assistant shell that streams
     assert "msg user" in r.text
@@ -42,7 +42,7 @@ def test_current_model_partial():
             return_value=Response(200, json={"current_model": "m1", "loaded_count": 1})
         )
         app = create_app(server_url=upstream)
-        client = TestClient(app)
-        r = client.get("/_partials/current-model")
+        with TestClient(app) as client:
+            r = client.get("/_partials/current-model")
         assert r.status_code == 200
         assert "m1" in r.text

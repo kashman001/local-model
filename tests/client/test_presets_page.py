@@ -35,9 +35,9 @@ def test_presets_page_lists_and_create():
         )
     )
     app = create_app(server_url=upstream)
-    client = TestClient(app)
-    r = client.get("/presets")
-    assert r.status_code == 200
-    assert "coder" in r.text
-    r2 = client.post("/presets/new", data={"name": "editor", "system_prompt": "edit"})
-    assert r2.status_code == 200
+    with TestClient(app) as client:
+        r = client.get("/presets")
+        assert r.status_code == 200
+        assert "coder" in r.text
+        r2 = client.post("/presets/new", data={"name": "editor", "system_prompt": "edit"})
+        assert r2.status_code == 200
