@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 
 from client.config import ClientSettings
 
+logger = logging.getLogger(__name__)
+
 
 def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
     base = Path(__file__).parent
@@ -106,14 +108,17 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
                             f"{stats['tps']:.1f} tok/s\n\n"
                         )
             # Persist the assistant message after the stream finishes
-            await app.state.client.post(
-                "/history/messages",
-                json={
-                    "conversation_id": conversation_id,
-                    "role": "assistant",
-                    "content": "".join(full_text),
-                },
-            )
+            try:
+                await app.state.client.post(
+                    "/history/messages",
+                    json={
+                        "conversation_id": conversation_id,
+                        "role": "assistant",
+                        "content": "".join(full_text),
+                    },
+                )
+            except Exception as e:
+                logger.warning("Failed to persist assistant message: %s", e)
 
         return StreamingResponse(relay(), media_type="text/event-stream")
 
