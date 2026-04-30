@@ -86,10 +86,11 @@ class _MLXWorkerThread:
                 result_q.put(("ok", None))
 
             elif kind == "generate":
-                model_id, prompt, max_tokens, temp, top_p, token_q = args
+                model_id, prompt, max_tokens, temp, top_p, token_q, cancel = args
                 bundle = self._loaded.get(model_id)
                 if bundle is None:
                     token_q.put(("error", KeyError(f"model not loaded: {model_id}")))
+                    result_q.put(("ok", None))
                     continue
                 try:
                     sampler = make_sampler(temp=temp, top_p=top_p)
@@ -103,22 +104,32 @@ class _MLXWorkerThread:
                             sampler=sampler,
                         )
                     ):
-                        token_q.put(
-                            Token(
-                                text=response.text,
-                                token_id=int(response.token),
-                                logprob=float(response.logprobs[response.token])
-                                if response.logprobs is not None
-                                else 0.0,
-                                elapsed_ms=(time.perf_counter() - start) * 1000.0,
+                        if cancel.is_set():
+                            break
+                        try:
+                            token_q.put(
+                                Token(
+                                    text=response.text,
+                                    token_id=int(response.token),
+                                    logprob=float(response.logprobs[response.token])
+                                    if response.logprobs is not None
+                                    else 0.0,
+                                    elapsed_ms=(time.perf_counter() - start) * 1000.0,
+                                ),
+                                timeout=5.0,
                             )
-                        )
+                        except queue.Full:
+                            # Consumer abandoned the generator (browser closed,
+                            # request cancelled). Stop generating to free the worker.
+                            break
                         if i + 1 >= max_tokens:
                             break
                 except Exception as exc:
                     token_q.put(("error", exc))
+                    result_q.put(("ok", None))
                     continue
                 token_q.put(_DONE)
+                result_q.put(("ok", None))
 
     def _call(self, kind: str, *args: Any) -> Any:
         """Dispatch a synchronous call to the worker thread; block until done."""
@@ -165,17 +176,27 @@ class MLXBackend:
         # is thread-safe and no MLX ops happen outside the worker thread.
         token_q: queue.Queue[Any] = queue.Queue(maxsize=128)
         result_q: queue.Queue[Any] = queue.Queue()
+        # Set on consumer-generator exit (any reason: complete, exception, GC)
+        # so the worker can stop generating tokens nobody will read.
+        cancel = threading.Event()
         self._worker._q.put(
-            ("generate", (model_id, prompt, max_tokens, temp, top_p, token_q), result_q)
+            (
+                "generate",
+                (model_id, prompt, max_tokens, temp, top_p, token_q, cancel),
+                result_q,
+            )
         )
 
-        while True:
-            item = token_q.get()
-            if item is _DONE:
-                break
-            if isinstance(item, tuple) and item[0] == "error":
-                raise item[1]
-            yield item  # type: ignore[misc]
+        try:
+            while True:
+                item = token_q.get()
+                if item is _DONE:
+                    break
+                if isinstance(item, tuple) and item[0] == "error":
+                    raise item[1]
+                yield item  # type: ignore[misc]
+        finally:
+            cancel.set()
 
     def model_info(self, model_id: str) -> ModelInfo:
         return self._worker._loaded[model_id]["info"]
