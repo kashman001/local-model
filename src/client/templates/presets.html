@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}presets{% endblock %}
+{% block content %}
+<h1>Presets</h1>
+<form hx-post="/presets/new" hx-target="#preset-list" hx-swap="afterbegin">
+  <input type="text" name="name" placeholder="name" required>
+  <textarea name="system_prompt" placeholder="system prompt" required></textarea>
+  <button type="submit">save</button>
+</form>
+<ul id="preset-list">
+  {% for p in presets %}
+  <li><strong>{{ p.name }}</strong>: {{ p.system_prompt | truncate(100) }}</li>
+  {% endfor %}
+</ul>
+{% endblock %}

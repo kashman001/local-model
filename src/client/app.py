@@ -117,6 +117,30 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
 
         return StreamingResponse(relay(), media_type="text/event-stream")
 
+    @app.get("/presets", response_class=HTMLResponse)
+    async def presets_page(request: Request):
+        r = await app.state.client.get("/presets")
+        presets = r.json() if r.status_code == 200 else []
+        return templates.TemplateResponse(
+            request=request,
+            name="presets.html",
+            context={"presets": presets},
+        )
+
+    @app.post("/presets/new", response_class=HTMLResponse)
+    async def presets_new(request: Request):
+        form = await request.form()
+        r = await app.state.client.post(
+            "/presets",
+            json={
+                "name": str(form["name"]),
+                "system_prompt": str(form["system_prompt"]),
+                "default_params": {},
+            },
+        )
+        p = r.json()
+        return HTMLResponse(f"<li><strong>{p['name']}</strong>: {p['system_prompt'][:100]}</li>")
+
     app.mount("/static", StaticFiles(directory=str(base / "static")), name="static")
     return app
 
