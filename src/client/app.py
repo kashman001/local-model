@@ -93,6 +93,7 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
                 "stream": True,
             }
             full_text: list[str] = []
+            final_stats: dict | None = None
             async with app.state.client.stream("POST", "/v1/chat/completions", json=payload) as r:
                 async for raw in r.aiter_lines():
                     if not raw.startswith("data: "):
@@ -107,12 +108,16 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
                         full_text.append(content)
                         yield f"event: message\ndata: {content}\n\n"
                     if "x_local_model_stats" in chunk:
-                        stats = chunk["x_local_model_stats"]
-                        yield (
-                            "event: stats\n"
-                            f"data: ttft {stats['ttft_ms']:.0f}ms · "
-                            f"{stats['tps']:.1f} tok/s\n\n"
-                        )
+                        final_stats = chunk["x_local_model_stats"]
+            if final_stats is not None:
+                yield (
+                    "event: stats\n"
+                    f"data: ttft {final_stats['ttft_ms']:.0f}ms · "
+                    f"{final_stats['tps']:.1f} tok/s\n\n"
+                )
+            # Sentinel event — htmx-ext-sse closes the EventSource on receipt,
+            # preventing the browser's default auto-reconnect.
+            yield "event: done\ndata: end\n\n"
             # Persist the assistant message after the stream finishes
             try:
                 await app.state.client.post(

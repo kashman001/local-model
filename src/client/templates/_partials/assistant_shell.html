@@ -2,7 +2,8 @@
      hx-ext="sse"
      sse-connect="/chat/stream?conversation_id={{ conversation_id }}&prompt={{ prompt | urlencode }}"
      sse-swap="message"
+     sse-close="done"
      hx-swap="beforeend">
   <strong>Model:</strong> <span class="content"></span>
-  <div class="stats" sse-swap="stats"></div>
+  <div class="stats" sse-swap="stats" hx-swap="innerHTML"></div>
 </div>
