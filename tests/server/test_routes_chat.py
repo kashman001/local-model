@@ -21,6 +21,9 @@ def test_chat_non_streaming():
         data = r.json()
         assert data["choices"][0]["message"]["content"] == "hi"
         assert data["choices"][0]["finish_reason"] == "stop"
+        stats = data["x_local_model_stats"]
+        assert all(k in stats for k in ("ttft_ms", "tps", "token_count", "total_ms"))
+        assert all(isinstance(stats[k], (int, float)) for k in stats)
 
 
 def test_chat_streaming_emits_done():
@@ -43,3 +46,24 @@ def test_chat_streaming_emits_done():
                 if line.startswith("data: ") and "[DONE]" not in line
             ]
             assert "".join(c["choices"][0]["delta"].get("content", "") for c in chunks) == "ok"
+            stats_chunks = [c for c in chunks if "x_local_model_stats" in c]
+            assert len(stats_chunks) == 1
+            stats = stats_chunks[0]["x_local_model_stats"]
+            assert all(k in stats for k in ("ttft_ms", "tps", "token_count", "total_ms"))
+            assert all(isinstance(stats[k], (int, float)) for k in stats)
+
+
+def test_chat_model_not_loaded_returns_503():
+    app = create_app(backend=FakeBackend(), default_model="m")
+    with TestClient(app) as client:
+        # Manually unload after lifespan startup to simulate no-model state.
+        state = app.state.app_state
+        state.registry.unload("m")
+        r = client.post(
+            "/v1/chat/completions",
+            json={"messages": [{"role": "user", "content": "hi"}]},
+        )
+    assert r.status_code == 503
+    body = r.json()
+    assert body["error"]["code"] == "model_not_loaded"
+    assert isinstance(body["error"]["message"], str)

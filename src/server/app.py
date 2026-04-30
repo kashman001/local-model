@@ -6,10 +6,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from server.backends.base import Backend
 from server.config import ServerSettings
-from server.registry import ModelRegistry
+from server.registry import ModelNotLoaded, ModelRegistry
 from server.state import AppState
 from server.store.db import connect, migrate
 
@@ -37,6 +38,14 @@ def create_app(
             db.close()
 
     app = FastAPI(title="local-model server", version="0.1.0", lifespan=lifespan)
+
+    @app.exception_handler(ModelNotLoaded)
+    async def model_not_loaded_handler(request, exc: ModelNotLoaded):
+        return JSONResponse(
+            status_code=503,
+            content={"error": {"message": str(exc), "code": "model_not_loaded"}},
+        )
+
     from server.routes.admin import router as admin_router
     from server.routes.chat import router as chat_router
     from server.routes.history import router as history_router
