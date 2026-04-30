@@ -72,6 +72,7 @@ Match orchestration overhead to risk/scope:
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`).
 - **Branches**: short-lived feature branches off `main`. PRs for non-trivial work.
 - **Models on disk**: never commit model weights. They live under `models/` (gitignored) or HuggingFace cache.
+- **Inline code in tool calls**: avoid `python -c "..."`, `bash -c "..."`, and heredoc-fed scripts (`python3 << 'EOF' ... EOF`) for anything beyond a single trivial expression. Write multi-line scripts to a temp file (`/tmp/<descriptive-name>.{py,sh}`) and execute (`python3 /tmp/foo.py`, `bash /tmp/foo.sh`). Same for multi-line git commit messages: prefer `git commit -F /tmp/commit-msg.txt` over `git commit -m "$(cat <<'EOF' ... EOF)"`. Temp files are reviewable with `cat`, survive the tool call for debugging, and let the user inspect what's about to run before / after the fact. Trivial single-expression `-c` invocations (e.g. `python3 -c 'import sys; print(sys.version)'`) are still fine.
 
 ## Spec-driven agent workflow
 
