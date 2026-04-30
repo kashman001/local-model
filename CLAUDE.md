@@ -68,6 +68,11 @@ Match orchestration overhead to risk/scope:
 - **Type hints**: `X | None` over `Optional[X]` (PEP 604, Python 3.10+). Ruff UP045 auto-fixes this — don't fight it. The `from typing import Optional` import is unneeded.
 - **SQL ordering**: when the plan or code uses `ORDER BY <semantic column>`, append a deterministic tiebreaker (`rowid` for SQLite). `CURRENT_TIMESTAMP` is second-granularity, so two inserts in the same second tie and re-order non-deterministically. Lexicographic UUID order is **not** a tiebreaker.
 - **Verifying library APIs**: when a plan or doc references a fast-moving library (any LLM inference engine, AI SDK, frontend framework), verify current API shape via Context7 (`mcp__plugin_context7_context7__query-docs`) before coding — plan code may be stale against the latest release.
+- **Backend runtime constraints**:
+  - **MLX** — thread-local GPU stream. Both `load` and all `generate` calls must run on the **same single persistent thread** per backend instance — a per-request worker thread is not enough because lazy model tensors are bound to the load thread's stream. (See [ADR 0004](./docs/decisions/0004-streaming-thread-affinity.md) for the `_MLXWorkerThread` pattern.)
+  - **vLLM** *(post-v1)* — async-native (`AsyncLLMEngine.generate(...)` returns `AsyncGenerator`). The `Backend` Protocol is currently sync; bridging needs an explicit decision before V2 implementation. **Resolve in the V2 plan, not at impl time.**
+  - **CUDA contexts** *(any future raw-CUDA backend)* — implicit per-thread context. `torch.cuda.set_device()` needed in the worker thread, plus explicit synchronization across threads.
+  - **Generic rule:** any `Backend.generate(...)` whose engine touches GPU state directly should assume Starlette will call `next()` from arbitrary threads, and either pin generation internally (MLX pattern) or use an async-native bridge (vLLM pattern).
 - **Node/TS** *(if a JS frontend lands)*: `pnpm`, TypeScript strict mode, Vite or Next.
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`, `test:`).
 - **Branches**: short-lived feature branches off `main`. PRs for non-trivial work.
