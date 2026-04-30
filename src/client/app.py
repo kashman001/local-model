@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -25,6 +26,83 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     async def index(request: Request):
         return templates.TemplateResponse(request=request, name="index.html", context={})
+
+    @app.get("/_partials/current-model", response_class=HTMLResponse)
+    async def current_model(request: Request):
+        try:
+            r = await app.state.client.get("/admin/stats")
+            current = r.json().get("current_model")
+        except Exception:
+            current = None
+        return templates.TemplateResponse(
+            request=request,
+            name="_partials/current_model.html",
+            context={"current_model": current},
+        )
+
+    @app.post("/chat/send", response_class=HTMLResponse)
+    async def chat_send(request: Request):
+        form = await request.form()
+        prompt = str(form.get("prompt", "")).strip()
+        conversation_id = str(form.get("conversation_id", "")).strip()
+        if not conversation_id:
+            stats = (await app.state.client.get("/admin/stats")).json()
+            model_id = stats.get("current_model") or "unknown"
+            r = await app.state.client.post(
+                "/history/conversations",
+                json={"title": prompt[:60] or "new chat", "model_id": model_id},
+            )
+            conversation_id = r.json()["id"]
+        await app.state.client.post(
+            "/history/messages",
+            json={"conversation_id": conversation_id, "role": "user", "content": prompt},
+        )
+        # Return both bubbles concatenated; HTMX appends to #messages.
+        user_html = templates.get_template("_partials/user_msg.html").render(content=prompt)
+        shell_html = templates.get_template("_partials/assistant_shell.html").render(
+            conversation_id=conversation_id, prompt=prompt
+        )
+        return HTMLResponse(user_html + shell_html)
+
+    @app.get("/chat/stream")
+    async def chat_stream(prompt: str, conversation_id: str):
+        async def relay():
+            payload = {
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": True,
+            }
+            full_text: list[str] = []
+            async with app.state.client.stream("POST", "/v1/chat/completions", json=payload) as r:
+                async for raw in r.aiter_lines():
+                    if not raw.startswith("data: "):
+                        continue
+                    data = raw[len("data: ") :]
+                    if data == "[DONE]":
+                        break
+                    chunk = json.loads(data)
+                    delta = chunk["choices"][0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        full_text.append(content)
+                        yield f"event: message\ndata: {content}\n\n"
+                    if "x_local_model_stats" in chunk:
+                        stats = chunk["x_local_model_stats"]
+                        yield (
+                            "event: stats\n"
+                            f"data: ttft {stats['ttft_ms']:.0f}ms · "
+                            f"{stats['tps']:.1f} tok/s\n\n"
+                        )
+            # Persist the assistant message after the stream finishes
+            await app.state.client.post(
+                "/history/messages",
+                json={
+                    "conversation_id": conversation_id,
+                    "role": "assistant",
+                    "content": "".join(full_text),
+                },
+            )
+
+        return StreamingResponse(relay(), media_type="text/event-stream")
 
     app.mount("/static", StaticFiles(directory=str(base / "static")), name="static")
     return app
