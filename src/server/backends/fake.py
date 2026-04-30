@@ -5,7 +5,15 @@ from __future__ import annotations
 import time
 from collections.abc import Iterator
 
-from server.backends.base import ModelInfo, Token
+from server.backends.base import ModelInfo, ScoreResult, Token
+
+# Fake tokenizer: split prompt into single-char tokens (deterministic).
+_FAKE_VOCAB = {chr(i): i for i in range(128)}
+
+
+def _fake_tokenize(text: str) -> list[str]:
+    """Split text into individual characters as fake tokens."""
+    return list(text)
 
 
 class FakeBackend:
@@ -39,6 +47,34 @@ class FakeBackend:
                 logprob=0.0,
                 elapsed_ms=(time.perf_counter() - start) * 1000.0,
             )
+
+    def score(self, prompt: str, *, top_logprobs: int = 0) -> ScoreResult:
+        """Deterministic stub: per-char tokens, synthetic logprobs."""
+        tokens = _fake_tokenize(prompt)
+        n = len(tokens)
+        # First token has no prediction (no prior context).
+        token_logprobs: list[float | None] = [None] + [-1.0 * (i + 1) for i in range(n - 1)]
+        # Build text_offsets: byte offset of each token in the original string.
+        # Since each fake token is exactly one char, offset == index.
+        text_offsets: list[int] = list(range(n))
+
+        top_lp: list[dict[str, float]] | None = None
+        if top_logprobs > 0:
+            # Return synthetic top-k entries per position.
+            top_lp = []
+            for i in range(n):
+                entry: dict[str, float] = {}
+                for k in range(top_logprobs):
+                    tok_str = chr((ord(tokens[i]) + k) % 128)
+                    entry[tok_str] = -1.0 * (k + 1)
+                top_lp.append(entry)
+
+        return ScoreResult(
+            tokens=tokens,
+            token_logprobs=token_logprobs,
+            top_logprobs=top_lp,
+            text_offsets=text_offsets,
+        )
 
     def model_info(self, model_id: str) -> ModelInfo:
         return self._loaded[model_id]

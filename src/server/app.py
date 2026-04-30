@@ -48,12 +48,14 @@ def create_app(
 
     from server.routes.admin import router as admin_router
     from server.routes.chat import router as chat_router
+    from server.routes.completions import router as completions_router
     from server.routes.history import router as history_router
     from server.routes.models import router as models_router
     from server.routes.presets import router as presets_router
 
     app.include_router(admin_router)
     app.include_router(chat_router)
+    app.include_router(completions_router)
     app.include_router(history_router)
     app.include_router(models_router)
     app.include_router(presets_router)

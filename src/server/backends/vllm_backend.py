@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from server.backends.base import ModelInfo, Token
+from server.backends.base import ModelInfo, ScoreResult, Token
 
 _MSG = "VLLMBackend is a Phase 2 stub. Not implemented in v1."
 
@@ -19,6 +19,9 @@ class VLLMBackend:
     def generate(self, messages: list[dict], params: dict) -> Iterator[Token]:
         raise NotImplementedError(_MSG)
         yield  # pragma: no cover  (keeps signature an iterator)
+
+    def score(self, prompt: str, *, top_logprobs: int = 0) -> ScoreResult:
+        raise NotImplementedError("V2 — implement via vLLM's native prompt_logprobs request param")
 
     def model_info(self, model_id: str) -> ModelInfo:
         raise NotImplementedError(_MSG)

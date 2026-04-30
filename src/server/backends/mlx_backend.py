@@ -23,7 +23,7 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
-from server.backends.base import ModelInfo, Token
+from server.backends.base import ModelInfo, ScoreResult, Token
 
 # Sentinel objects used in inter-thread communication.
 _STOP = object()  # worker loop shutdown
@@ -42,6 +42,7 @@ class _MLXWorkerThread:
     def _loop(self) -> None:
         """Main loop — runs entirely on the dedicated worker thread."""
         import mlx.core as mx
+        import mlx.nn as nn
         from mlx_lm import load as mlx_load
         from mlx_lm import stream_generate
         from mlx_lm.sample_utils import make_sampler
@@ -84,6 +85,88 @@ class _MLXWorkerThread:
                 (model_id,) = args
                 self._loaded.pop(model_id, None)
                 result_q.put(("ok", None))
+
+            elif kind == "score":
+                model_id, prompt, top_k = args
+                bundle = self._loaded.get(model_id)
+                if bundle is None:
+                    result_q.put(("err", KeyError(f"model not loaded: {model_id}")))
+                    continue
+                try:
+                    tokenizer = bundle["tokenizer"]
+                    model = bundle["model"]
+
+                    # Encode the prompt to token ids.
+                    # apply_chat_template is NOT used here — we score the raw
+                    # text exactly as provided (lm_eval sends raw prompts).
+                    if hasattr(tokenizer, "encode"):
+                        input_ids: list[int] = tokenizer.encode(prompt)
+                    else:
+                        input_ids = tokenizer(prompt)["input_ids"]
+
+                    if len(input_ids) == 0:
+                        result_q.put(("err", ValueError("Empty prompt after tokenization")))
+                        continue
+
+                    # Forward pass through the model — single batch.
+                    inputs = mx.array([input_ids])  # shape [1, seq_len]
+                    logits = model(inputs)  # shape [1, seq_len, vocab_size]
+                    mx.eval(logits)
+
+                    # Log-softmax over vocab dimension.
+                    # mx.core has no log_softmax; use mlx.nn.log_softmax instead.
+                    log_probs = nn.log_softmax(logits[0], axis=-1)  # [seq_len, vocab]
+                    mx.eval(log_probs)
+
+                    seq_len = len(input_ids)
+                    n_pred = seq_len - 1  # positions 0..seq_len-2 predict token 1..seq_len-1
+
+                    # token_logprobs[i] = log P(input_ids[i] | input_ids[:i])
+                    # Position 0: no prior context → None.
+                    token_logprobs: list[float | None] = [None]
+                    for pos in range(n_pred):
+                        # logits at position `pos` predict position `pos+1`
+                        lp = float(log_probs[pos, input_ids[pos + 1]])
+                        token_logprobs.append(lp)
+
+                    # Build token strings and text offsets.
+                    tokens: list[str] = []
+                    text_offsets: list[int] = []
+                    offset = 0
+                    for tid in input_ids:
+                        tok_str = tokenizer.decode([tid])
+                        tokens.append(tok_str)
+                        text_offsets.append(offset)
+                        offset += len(tok_str)
+
+                    # Optional top-k per position.
+                    top_lp: list[dict[str, float]] | None = None
+                    if top_k > 0:
+                        top_lp = []
+                        for pos in range(seq_len):
+                            row = log_probs[pos]  # [vocab_size]
+                            # argpartition gives indices of the top_k largest values
+                            # (unsorted); then sort that slice descending.
+                            part_idx = mx.argpartition(-row, kth=top_k - 1)[:top_k]
+                            mx.eval(part_idx)
+                            part_idx_list = part_idx.tolist()
+                            # Sort by descending log-prob.
+                            part_idx_list.sort(key=lambda i: float(row[i]), reverse=True)
+                            entry: dict[str, float] = {}
+                            for idx in part_idx_list:
+                                tok_str = tokenizer.decode([int(idx)])
+                                entry[tok_str] = float(row[idx])
+                            top_lp.append(entry)
+
+                    result = ScoreResult(
+                        tokens=tokens,
+                        token_logprobs=token_logprobs,
+                        top_logprobs=top_lp,
+                        text_offsets=text_offsets,
+                    )
+                    result_q.put(("ok", result))
+                except Exception as exc:
+                    result_q.put(("err", exc))
 
             elif kind == "generate":
                 model_id, prompt, max_tokens, temp, top_p, token_q, cancel = args
@@ -197,6 +280,12 @@ class MLXBackend:
                 yield item  # type: ignore[misc]
         finally:
             cancel.set()
+
+    def score(self, prompt: str, *, top_logprobs: int = 0) -> ScoreResult:
+        model_id = next(reversed(self._worker._loaded), None)
+        if model_id is None:
+            raise RuntimeError("No model loaded")
+        return self._worker._call("score", model_id, prompt, top_logprobs)
 
     def model_info(self, model_id: str) -> ModelInfo:
         return self._worker._loaded[model_id]["info"]

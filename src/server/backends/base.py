@@ -24,6 +24,16 @@ class ModelInfo:
     backend_kind: str
 
 
+@dataclass
+class ScoreResult:
+    """Per-token logprob data for a prompt — matches OpenAI's logprobs shape."""
+
+    tokens: list[str]
+    token_logprobs: list[float | None]
+    top_logprobs: list[dict[str, float]] | None
+    text_offsets: list[int]
+
+
 @runtime_checkable
 class Backend(Protocol):
     def load(self, model_id: str) -> ModelInfo: ...
@@ -35,6 +45,8 @@ class Backend(Protocol):
         messages: list[dict],
         params: dict,
     ) -> Iterator[Token]: ...
+
+    def score(self, prompt: str, *, top_logprobs: int = 0) -> ScoreResult: ...
 
     def model_info(self, model_id: str) -> ModelInfo: ...
 
