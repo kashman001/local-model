@@ -9,7 +9,7 @@
 </form>
 <ul id="preset-list">
   {% for p in presets %}
-  <li><strong>{{ p.name }}</strong>: {{ p.system_prompt | truncate(100) }}</li>
+  {% include "_partials/preset_item.html" %}
   {% endfor %}
 </ul>
 {% endblock %}

@@ -167,7 +167,18 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
             },
         )
         p = r.json()
-        return HTMLResponse(f"<li><strong>{p['name']}</strong>: {p['system_prompt'][:100]}</li>")
+        return templates.TemplateResponse(
+            request=request, name="_partials/preset_item.html", context={"p": p}
+        )
+
+    @app.delete("/presets/{pid}", response_class=HTMLResponse)
+    async def presets_delete(pid: str):
+        r = await app.state.client.delete(f"/presets/{pid}")
+        if r.status_code >= 400:
+            logger.warning("Upstream preset delete failed: %s %s", r.status_code, r.text)
+            return HTMLResponse(status_code=r.status_code, content="")
+        # HTMX swaps the <li> with empty content (outerHTML), removing the row.
+        return HTMLResponse("")
 
     @app.get("/stats", response_class=HTMLResponse)
     async def stats_page(request: Request):

@@ -1,0 +1,8 @@
+<li id="preset-{{ p.id }}">
+  <strong>{{ p.name }}</strong>: {{ p.system_prompt | truncate(100) }}
+  <button class="del"
+          hx-delete="/presets/{{ p.id }}"
+          hx-target="#preset-{{ p.id }}"
+          hx-swap="outerHTML"
+          hx-confirm="Delete preset '{{ p.name }}'?">delete</button>
+</li>
