@@ -23,6 +23,7 @@ dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.7",
+    "respx>=0.23",
 ]
 bench = [
     "lm-eval>=0.4.5",
@@ -50,9 +51,4 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "mac_only: tests that require Apple Silicon + mlx-lm (skipped elsewhere)",
-]
-
-[dependency-groups]
-dev = [
-    "respx>=0.23.1",
 ]

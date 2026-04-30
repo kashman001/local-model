@@ -1513,15 +1513,11 @@ bench = [
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "respx" },
     { name = "ruff" },
 ]
 vllm = [
     { name = "vllm", marker = "sys_platform == 'linux'" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "respx" },
 ]
 
 [package.metadata]
@@ -1536,14 +1532,12 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "python-multipart", specifier = ">=0.0.27" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
     { name = "vllm", marker = "sys_platform == 'linux' and extra == 'vllm'", specifier = ">=0.6" },
 ]
 provides-extras = ["dev", "bench", "vllm"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "respx", specifier = ">=0.23.1" }]
 
 [[package]]
 name = "loguru"
