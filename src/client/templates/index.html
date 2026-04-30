@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}chat{% endblock %}
+{% block content %}
+<section id="chat">
+  <div id="messages"></div>
+  <form id="composer" hx-post="/chat/send" hx-target="#messages" hx-swap="beforeend">
+    <textarea name="prompt" placeholder="Ask something…" required></textarea>
+    <button type="submit">Send</button>
+  </form>
+</section>
+{% endblock %}
