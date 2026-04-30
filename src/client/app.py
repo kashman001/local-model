@@ -141,6 +141,28 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
         p = r.json()
         return HTMLResponse(f"<li><strong>{p['name']}</strong>: {p['system_prompt'][:100]}</li>")
 
+    @app.get("/stats", response_class=HTMLResponse)
+    async def stats_page(request: Request):
+        stats_r = await app.state.client.get("/admin/stats")
+        models_r = await app.state.client.get("/v1/models")
+        return templates.TemplateResponse(
+            request=request,
+            name="stats.html",
+            context={
+                "stats": stats_r.json(),
+                "models": models_r.json().get("data", []),
+            },
+        )
+
+    @app.post("/swap", response_class=HTMLResponse)
+    async def swap(request: Request):
+        form = await request.form()
+        r = await app.state.client.post(
+            "/admin/models/load", json={"model_id": str(form["model_id"])}
+        )
+        info = r.json()
+        return HTMLResponse(f"<span>model: {info['id']}</span>")
+
     app.mount("/static", StaticFiles(directory=str(base / "static")), name="static")
     return app
 

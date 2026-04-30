@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}stats{% endblock %}
+{% block content %}
+<h1>Stats</h1>
+<dl>
+  <dt>Current model</dt><dd>{{ stats.current_model or "—" }}</dd>
+  <dt>Loaded count</dt><dd>{{ stats.loaded_count }}</dd>
+</dl>
+<h2>Swap model</h2>
+<form hx-post="/swap" hx-target="#current-model" hx-swap="innerHTML">
+  <input type="text" name="model_id" placeholder="mlx-community/...-4bit" required size="50">
+  <button type="submit">load</button>
+</form>
+<h2>Loaded models</h2>
+<ul>
+  {% for m in models %}<li>{{ m.id }} (ctx {{ m.context_length }})</li>{% endfor %}
+</ul>
+{% endblock %}
