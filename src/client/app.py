@@ -27,6 +27,19 @@ def create_app(*, server_url: str = "http://127.0.0.1:8080") -> FastAPI:
     async def index(request: Request):
         return templates.TemplateResponse(request=request, name="index.html", context={})
 
+    @app.get("/history", response_class=HTMLResponse)
+    async def history_page(request: Request):
+        try:
+            r = await app.state.client.get("/history/conversations")
+            convs = r.json()
+        except Exception:
+            convs = []
+        return templates.TemplateResponse(
+            request=request,
+            name="history.html",
+            context={"conversations": convs},
+        )
+
     @app.get("/_partials/current-model", response_class=HTMLResponse)
     async def current_model(request: Request):
         try:

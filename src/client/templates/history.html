@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}history{% endblock %}
+{% block content %}
+<h1>History</h1>
+{% if conversations %}
+<ul class="convo-list">
+  {% for c in conversations %}
+  <li><a href="/?conversation_id={{ c.id }}">{{ c.title }}</a>
+    <span class="meta">{{ c.model_id }} · {{ c.updated_at }}</span></li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No conversations yet.</p>
+{% endif %}
+{% endblock %}
