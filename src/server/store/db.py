@@ -43,7 +43,11 @@ CREATE INDEX IF NOT EXISTS idx_conv_updated ON conversation(updated_at DESC);
 def connect(path: str | Path) -> sqlite3.Connection:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(p, detect_types=sqlite3.PARSE_DECLTYPES)
+    conn = sqlite3.connect(
+        p,
+        detect_types=sqlite3.PARSE_DECLTYPES,
+        check_same_thread=False,
+    )
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
