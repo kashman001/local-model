@@ -37,6 +37,9 @@ def create_app(
             db.close()
 
     app = FastAPI(title="local-model server", version="0.1.0", lifespan=lifespan)
+    from server.routes.chat import router as chat_router
+
+    app.include_router(chat_router)
     app.state.app_state = state
 
     @app.get("/health")
