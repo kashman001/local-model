@@ -21,13 +21,23 @@
       "Bash(uv pip show *)",
       "Bash(uv pip freeze)",
 
+      "Bash(uv run pytest)",
+      "Bash(uv run pytest *)",
+      "Bash(uv run ruff check)",
+      "Bash(uv run ruff check *)",
+      "Bash(uv run ruff format)",
+      "Bash(uv run ruff format *)",
+
       "Bash(ruff check)",
       "Bash(ruff check *)",
       "Bash(ruff format)",
       "Bash(ruff format *)",
 
       "Bash(pytest)",
-      "Bash(pytest *)"
+      "Bash(pytest *)",
+
+      "mcp__plugin_context7_context7__query-docs",
+      "mcp__plugin_context7_context7__resolve-library-id"
     ]
   }
 }
