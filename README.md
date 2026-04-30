@@ -52,6 +52,8 @@ cd local-model
 uv sync --extra dev
 ```
 
+All runtime deps including `python-multipart` (required by FastAPI form handling) are pulled by the default install — no extras needed for the chat client.
+
 For benchmarks (optional, larger install):
 
 ```bash
