@@ -54,6 +54,14 @@ When you spin up subagents (e.g. via `superpowers:subagent-driven-development`),
 
 When the plan is well-specified and the task is mechanical, **trust the spec compliance + ruff + pytest** as the quality gate; you don't need a separate code-quality reviewer for every micro-task. Reserve standalone code-quality reviewers for substantive work (real I/O, integrations, multi-file coordination).
 
+### Cadence by task class
+
+Match orchestration overhead to risk/scope:
+
+- **Mechanical task** (Haiku implementer, single review): orchestrator reads the plan section, drafts the prompt, and dispatches without prior user review. Reports only the verdict + pasted `pytest -q` output and `git show --stat`. Surface to the user **only if** the result is `DONE_WITH_CONCERNS`, `BLOCKED`, or otherwise unexpected. Use for plan-verbatim scaffold / DAO / stub / route-CRUD work.
+- **Substantive task** (Sonnet implementer + Sonnet reviewer): orchestrator drafts the implementer prompt and shows it to the user for review before dispatching. After dispatch, runs the implementer + reviewer, then reports the combined verdict. Use for integration tasks, fast-moving-library work, or anything wiring multiple components (T2.1, T2.3, T3.2 in the v1 plan).
+- **End of phase:** pause, FF-merge feature branch into `main`, push (green-list), update `memory/project_overview.md` and `RESUME.md`. Let the user redirect before starting the next phase.
+
 ## Tooling conventions
 
 - **Python**: `uv` for env + dependency management, `ruff` for format + lint, `pytest` for tests. See [`docs/decisions/0001-python-tooling.md`](./docs/decisions/0001-python-tooling.md).
@@ -71,6 +79,11 @@ When the plan is well-specified and the task is mechanical, **trust the spec com
 2. Break the spec into agent-sized tasks (~1 PR each).
 3. Use Claude Code subagents (`Explore`, `Plan`, `general-purpose`) for parallelizable work.
 4. Each agent task should reference the SPEC section it implements.
+5. **Post-task routing** — after every subagent task completes, route by status:
+   - **`DONE`** (no deviations) → proceed to next task; no doc/memory updates mid-phase.
+   - **`DONE_WITH_CONCERNS` with a forward-relevant adaptation** (architectural caveat, library-API drift, plan/code divergence worth carrying) → orchestrator commits a separate `docs(plans):` follow-up adding a per-task entry to the Execution log appendix; refresh `RESUME.md` if the state shift is non-trivial. Memory (`memory/project_overview.md`) updates wait until end-of-phase unless the lesson is project-shaping.
+   - **`DONE_WITH_CONCERNS` with cosmetic-only deviation** (e.g. ruff import sort) → mention once in the orchestrator's report and move on. No follow-up commit.
+   - **`BLOCKED`** → pause, report to the user, await direction.
 
 ## Standing authorizations
 
