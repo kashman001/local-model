@@ -164,6 +164,100 @@ them on V2:
 6. **Per-request `MLXBackend()` is wrong.** The persistent worker thread
    is per-instance. Tests must reuse instances or accept startup cost.
 
+## Future work — speeding up Mac MLX evaluation (post-V2 / V3 horizon)
+
+V1's `mmlu_stem` baseline takes ~14 hours on M5 Max. V2 (vLLM on RTX
+4080) will be 5-10× faster purely from vLLM's continuous batching
++ PagedAttention prefix sharing — **not** because the GPU is dramatically
+better, but because vLLM batches dozens of concurrent requests at every
+inference step and automatically detects shared prompt prefixes.
+
+If a future project ("V3-ish") wants to make Mac MLX evals competitive,
+here are the levers ranked by impact-vs-effort. **Don't tackle these
+mid-V2** — they're a separate engagement.
+
+### 1. Prompt-cache reuse (5-10× for MMLU-style evals)
+
+MMLU's 5-shot eval re-uses the **same 5-example context** across
+hundreds of questions per subject. Currently `MLXBackend.score(...)`
+re-runs the full ~2000-token forward pass on every question; the
+5-shot prefix is ~80% of the input.
+
+**Fix:** detect prefix reuse server-side, cache the model's KV state at
+the prefix boundary, and only run the per-question suffix through the
+model on subsequent calls. mlx_lm has the primitives (`make_kv_caches`,
+`cache.RotatingKVCache`).
+
+This is exactly what vLLM does automatically via PagedAttention —
+that's the dominant reason V2 will be faster than V1, not raw GPU
+horsepower.
+
+**Cost:** ~150 LoC in `MLXBackend.score` plus careful state management
+across `_MLXWorkerThread`. The lm_eval client doesn't tell us "same
+prefix again"; we have to detect it via prompt-prefix matching.
+
+### 2. Skip full `log_softmax` materialization (1.5-2× possibly)
+
+Currently `MLXBackend.score` computes `log_softmax(logits)` over the
+full `[seq_len × vocab]` tensor (~512 MB at fp16 for a 2000-token
+Llama-8B prompt). We only actually need:
+
+- `log_softmax[i, input_ids[i+1]]` for each position (per-token
+  logprob)
+- Top-k entries when `logprobs > 0`
+
+For per-token logprobs alone you can compute `logits[i, target] -
+logsumexp(logits[i])` per position without materializing the full
+softmax. Saves memory bandwidth + ~20-40% time.
+
+For top-k, `mx.argpartition` per position rather than full sort over
+vocab.
+
+**Cost:** ~50 LoC in `MLXBackend.score`'s scoring branch.
+
+### 3. Server-side batching for MLX (4-8× at high concurrency)
+
+Extend `Backend.generate()` and `Backend.score()` to accept batches.
+Add a request-coalescing scheduler in front of `_MLXWorkerThread`. Use
+`mlx_lm.batch_generate` for fixed-size batches.
+
+**Note:** MLX batching is *fixed-batch* (all members run to completion
+together), not vLLM-style *continuous batching* (dynamic insert/evict
+mid-batch). So even with this, MLX batching is more limited than what
+V2 gets for free.
+
+**Cost:** significant — Protocol extension, scheduler, batch-aware
+score path. Probably ~500 LoC + tests. **Worth it only if you're
+running heavy concurrent loads on Mac, which v1's single-user pattern
+does not require.**
+
+### 4. Profile first
+
+Before optimizing, instrument `MLXBackend.score` to time:
+
+- Tokenizer (`tokenizer.encode`) — likely <1%
+- Model forward pass — likely 70-90%
+- `log_softmax` materialization — possibly 5-20%
+- Top-k extraction Python loop — likely <5%
+- HTTP overhead — likely <5%
+
+Knowing the breakdown tells you whether (1) and (2) are even worth
+doing for *your* model+context-length combination. The forward pass
+may dominate so heavily that everything else is noise.
+
+### Pragmatic for routine Mac dev
+
+For day-to-day development you don't need a 14-hour eval. Use any of:
+
+- `--limit 100` per task (~30-40 min, real per-task accuracy with
+  ±4-5% stderr)
+- `--tasks mmlu_high_school_mathematics` (single subject, ~10 min)
+- Llama-3.2-1B-Instruct-4bit instead of 8B (5-8× faster, lower
+  fidelity but exercises the same code paths)
+
+Reserve the full 14-hour Llama-8B `mmlu_stem` run for when you
+specifically need the published baseline.
+
 ## Cross-platform baselines (for cross-checking V2)
 
 `bench/baselines/v1-mac-mlx/` holds the v1 ship measurements. After your
