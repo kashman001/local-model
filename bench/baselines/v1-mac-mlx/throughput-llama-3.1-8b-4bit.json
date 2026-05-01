@@ -1,0 +1,31 @@
+{
+  "model": "mlx-community/Llama-3.1-8B-Instruct-4bit",
+  "server_url": "http://127.0.0.1:8080",
+  "prompt": "Write a haiku about debugging.",
+  "max_tokens": 128,
+  "runs": 3,
+  "samples": [
+    {
+      "ttft_ms": 186.09133298741654,
+      "tps": 103.81481269335146,
+      "token_count": 17,
+      "total_ms": 349.8444579890929
+    },
+    {
+      "ttft_ms": 101.74408301827498,
+      "tps": 105.49052296975519,
+      "token_count": 17,
+      "total_ms": 262.89600000018254
+    },
+    {
+      "ttft_ms": 107.1026670106221,
+      "tps": 100.42881628470958,
+      "token_count": 17,
+      "total_ms": 276.37679199688137
+    }
+  ],
+  "mean_ttft_ms": 131.64602767210454,
+  "mean_tps": 103.24471731593874,
+  "median_tps": 103.81481269335146,
+  "generated_at": "2026-04-30T16:47:39"
+}

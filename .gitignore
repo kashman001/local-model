@@ -48,8 +48,10 @@ huggingface/
 # Local data (SQLite history db, etc.)
 data/
 
-# Benchmark output
+# Benchmark run output (per-run, disposable). Tracked baselines live in
+# bench/baselines/ and are NOT ignored — see Phase C of the v1 ship plan.
 bench/results/
+!bench/baselines/
 
 # Claude Code local settings
 .claude/settings.local.json

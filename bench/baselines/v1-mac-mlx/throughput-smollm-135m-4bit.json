@@ -1,0 +1,31 @@
+{
+  "model": "mlx-community/SmolLM-135M-Instruct-4bit",
+  "server_url": "http://127.0.0.1:8080",
+  "prompt": "Write a haiku about debugging.",
+  "max_tokens": 32,
+  "runs": 3,
+  "samples": [
+    {
+      "ttft_ms": 37.91608300525695,
+      "tps": 575.8969145389152,
+      "token_count": 32,
+      "total_ms": 93.48158299690112
+    },
+    {
+      "ttft_ms": 20.000958000309765,
+      "tps": 609.0172579746187,
+      "token_count": 32,
+      "total_ms": 72.54462499986403
+    },
+    {
+      "ttft_ms": 19.286374998046085,
+      "tps": 612.7646575510865,
+      "token_count": 32,
+      "total_ms": 71.50870800251141
+    }
+  ],
+  "mean_ttft_ms": 25.734472001204267,
+  "mean_tps": 599.2262766882068,
+  "median_tps": 609.0172579746187,
+  "generated_at": "2026-04-30T11:44:27"
+}

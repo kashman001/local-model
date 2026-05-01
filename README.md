@@ -6,11 +6,16 @@ A learning project: the point is to wire up the inference layer ourselves, not t
 
 ## Status
 
-Spec and architecture drafted. Code scaffolding is the next step.
+**v1 (Mac M5 Max + MLX) is shipped on `main`.** All 32 plan tasks complete, 88 tests passing, SC1–SC9 verified live. Subsequent commits on `feature/v1-mac-mlx` add `/v1/completions` with logprobs+echo for full OpenAI-compatible scoring (closes SC7's lm_eval integration).
+
+V2 (RTX 4080 PC + vLLM) is the next phase. See [`docs/V2_Catchup.md`](./docs/V2_Catchup.md) for the durable handoff and [`docs/plans/post-v1-vllm.md`](./docs/plans/post-v1-vllm.md) for V2 scoping.
 
 - [`SPEC.md`](./SPEC.md) — what we're building, scope, success criteria
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) — how it's built, components, interfaces
 - [`docs/decisions/`](./docs/decisions/) — ADRs for non-obvious choices
+- [`docs/V2_Catchup.md`](./docs/V2_Catchup.md) — V2 session catchup (read first if picking up V2)
+- [`docs/plans/`](./docs/plans/) — implementation plans (the v1 plan + execution log appendix is the post-mortem)
+- [`bench/baselines/v1-mac-mlx/`](./bench/baselines/v1-mac-mlx/) — v1 ship measurements (throughput, vibe, mmlu) for cross-platform comparison
 - [`docs/diagrams.md`](./docs/diagrams.md) — diagram index
 
 ## At-a-glance (Phase 1)
