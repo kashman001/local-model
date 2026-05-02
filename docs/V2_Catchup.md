@@ -283,6 +283,59 @@ when V2 work begins:
 - `setsid` is not on macOS by default — use `nohup ... & disown` for
   detached background processes. (Linux has both.)
 
+## Developer environment notes (post-v1 additions)
+
+Operational gotchas the v1 session hit while bootstrapping the dev env.
+These don't affect the project itself — they affect how a fresh Claude
+Code session on the V2 PC will set up its tooling.
+
+### GitHub MCP — use the standalone server, not the official plugin
+
+The official `github@claude-plugins-official` plugin from the Claude
+Code marketplace points at `https://api.githubcopilot.com/mcp/` and
+tries to authenticate via OAuth Dynamic Client Registration (RFC 7591).
+GitHub's Copilot MCP server **doesn't support DCR**, so the auth flow
+fails with `SDK auth failed: Incompatible auth server: does not support
+dynamic client registration` on Claude Code 2.1.116. PAT-based auth via
+the plugin's `${GITHUB_PERSONAL_ACCESS_TOKEN}` header is bypassed
+because the SDK tries OAuth first.
+
+Working pattern (verified 2026-05-02 on macOS):
+
+1. `brew install github-mcp-server` — installs GitHub's open-source
+   stdio MCP server (separate from the Copilot endpoint).
+2. Generate a fine-grained PAT at <https://github.com/settings/personal-access-tokens/new>
+   with read/write access to the repos you'll touch.
+3. Add the token to `~/.claude/settings.json` under the top-level
+   `env` block (NOT under `mcpServers` — that key isn't in the
+   settings.json schema and validation will reject it):
+
+   ```json
+   "env": {
+     "GITHUB_PERSONAL_ACCESS_TOKEN": "github_pat_..."
+   }
+   ```
+
+4. Disable the broken plugin: flip
+   `"github@claude-plugins-official": false` in `enabledPlugins`.
+5. Register the standalone server at user scope:
+
+   ```bash
+   claude mcp add -s user github-local /opt/homebrew/bin/github-mcp-server stdio
+   ```
+
+   The token from `settings.json` `env` propagates to the spawned MCP
+   server automatically; no `-e` flag needed.
+
+6. Verify via `claude mcp list` (should show `github-local: ✓
+   Connected`). The server's tools become visible only in *new* Claude
+   Code sessions started after the `mcp add` call — restart the CLI
+   for them to load.
+
+If the V2 PC is on Linux: replace `/opt/homebrew/bin/github-mcp-server`
+with the appropriate Linux install path (apt, binary download from
+GitHub releases, or `brew` on Linuxbrew).
+
 ## V2 kickoff order
 
 1. Read [`docs/plans/post-v1-vllm.md`](./plans/post-v1-vllm.md) — V2 scoping doc with open questions
